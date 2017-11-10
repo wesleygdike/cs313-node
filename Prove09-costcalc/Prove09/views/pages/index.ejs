@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <% include ../partials/header.ejs %>
+  <script>
+    function typeChange(element) {
+            alert("You clicked on the type selecter!" + element.value);
+            var wtElement = document.getElementById("wt");
+            
+            switch(element.value) {
+                case "0": wtElement.max = "4"; break;
+                case "1": wtElement.max = "4"; break;
+                case "2": wtElement.max = "12"; break;
+                case "3": wtElement.max = "12"; break;
+                default: console.log("Error on Select");
+            };
+    };
+  </script>
+</head>
+
+<body>
+
+<div class="jumbotron text-center">
+    <div class="container">
+        <h1>Enter Your Selection to Calculate your shipping Cost</h1>
+        <form action="/getRate" method="get" class="form">
+            <h2>Weight:</h2>
+            <input id="wt" type="number" max="0" min="0" name="weight"><br/><br/>
+            <h2>Type:</h2>
+            <select id="type" name="type" onchange="typeChange(this)">
+                <option value="0">Letter(Stamped)</option>
+                <option value="1">Letter(Metered)</option>
+                <option value="2">Large Envelopes(Flats)</option>
+                <option value="3">Parcels</option>
+            </select><br/><br/>
+            <input type="submit" class="btn-default">
+        </form>
+    </div>
+</div>
+</body>
+</html>
