@@ -9,7 +9,7 @@ function FlyingObject(x, y, rd, d, vx, vy, rt, type) {
     this.velocityX = vx;
     this.velocityY = vy;
     this.isAlive = true;
-    this.type = type;
+    this.type = type;       //see client render function to see available types
     
     /*
      * Mutators

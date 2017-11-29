@@ -1,5 +1,5 @@
 'use strict';
-
+const ejs = require('ejs');
 const express = require('express');
 const http = require('http');
 const app = express();
@@ -12,7 +12,6 @@ app.use(express.static(__dirname + '/public'));
 const server = app.listen(app.get('port'), function() {
   console.log('AsteroidanonTestEnv app is running on port', app.get('port'));
 });
-
 // views is directory for all template files
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
@@ -27,6 +26,9 @@ app.get('/', function(request, response) {
 const io = require('socket.io').listen(server);
 // Register a callback function run when a new connection connects
 var FlyingObject = require('./flyingObject');
+//TESTING COUNT
+var count = 0;
+var name = 'test';
 //Array to which we will assign our flying object data
 var flyingObjects = [];
 //Array of users for handling input
@@ -68,24 +70,31 @@ io.on('connection', (socket) =>{
                 };
             //handle laser on hit events
             laser.hit = function(points) {
-                this.photons.kill();
+                this.kill();
                 this.user.score += points;
             };
             return laser;
         },
-        shipid : 0,
-        id : 0
+        id : name + count++
     };
     //add the users ship to the data and get the index/id
-    user.shipid = flyingObjects.push(user.ship);
+    //console.log('Assigning Ship: ' + user.id);
+    flyingObjects.push(user.ship);
     //add user to array for later use
-    user.id = users.push(user);
+    console.log('Assigning User: ' + user.id);
+    users.push(user);
+    //initiate scare tables
+    updateScores();
     //When user disconnects
     socket.on('disconnect', function(){
-      console.log('user disconnected');
+      console.log('user: ' + user.id + ' disconnected');
       //remove that user and ship from the game
-      flyingObjects.splice(user.shipid, 1);
-      users.splice(user.id, 1);
+      var tempShipID = flyingObjects.splice(flyingObjects.indexOf(user.ship), 1);
+      console.log('ship: ' + tempShipID[0].id + ' removed');
+      var tempUserID = users.splice(users.indexOf(user), 1);
+      console.log('user: ' + tempUserID[0].id + ' removed');
+      //update Scores
+      updateScores();
     });
     //When user changes their input values
     socket.on('inputchange', function(data){
@@ -102,12 +111,15 @@ io.on('connection', (socket) =>{
 
 //This is the main loop... well... it is kinda like a loop
 setInterval(gameLoop, 30);
+setInterval(dropRocks, 1000);
 
 function gameLoop(){
     //update ship velocities due to input
     handleInput();
     //update flying objects
     update();
+    //bring out your dead
+    burrythedead();
     //push the update to the clients
     render();
 }
@@ -140,17 +152,147 @@ function handleInput(){
 }
 
 function update() {
+    var Astrolist = [];
+    var Laserlist = [];
     //console.log('Updating environment');
     //apply input changes move everything
     for (var i = 0; i < flyingObjects.length; i++) {
         if(flyingObjects[i].isAlive){
+            //apply input changes move everything
+            //console.log('Updating FlyingObject: ' + i);
             flyingObjects[i].update();
-        } else { flyingObjects.splice(i, 1); }
+            //if we got an Asteroid add the index to the asteroid list
+            if(flyingObjects[i].type == 2){
+                //console.log('Adding FlyingObject: ' + i + 'to Astrolist');
+                Astrolist.push(i);
+            //if we got an Laser add the index to the laser list    
+            } else if(flyingObjects[i].type == 1){
+                //console.log('Adding FlyingObject: ' + i + 'to Laserlist');
+                Laserlist.push(i);
+            }
+        //remove the undead    
+        }
+    }
+    //collisions
+    //Asteroids
+    for (var i = 0; i < Astrolist.length; i++){
+        var asteroid = flyingObjects[Astrolist[i]];
+        //console.log('Ckecking collision on FlyingObject: ' + i);
+        if(asteroid.isAlive){
+            for(var j = 0; j < Math.max(Laserlist.length, users.length); j++){
+                //Vrs Lasers 
+                if(j < Laserlist.length){
+                    if(flyingObjects[Laserlist[j]].isAlive && 
+                        collision(asteroid, flyingObjects[Laserlist[j]])){
+                        //We have a Laser collision with this Asteroid
+                        //kill the Asteroid and the Laser while handling score
+                        console.log('Collision between Laser & Asteroid, add score to: ' + flyingObjects[Laserlist[j]].user.id);
+                        flyingObjects[Laserlist[j]].hit(asteroid.kill());
+                        updateScores(); //CHANGE TO AN EJS 
+                        continue;
+                    }
+                }
+                //Vrs Ships
+                if(j < users.length){
+                    if(users[j].ship.isAlive && 
+                        collision(asteroid,users[j].ship)){
+                        //We have a Laser collision with this Asteroid
+                        //kill the Asteroid and the Ship
+                        console.log('Collision between Ship & Asteroid');
+                        asteroid.kill();
+                        //HANDLE GAME OVER CODE HERE
+                        users[j].ship.kill();
+                        updateScores();
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+function burrythedead(){
+    //console.log('Burrying the dead');
+    for (var i = 0; i < flyingObjects.length; i++) {
+        if(!flyingObjects[i].isAlive){
+            //remove the undead    
+            console.log('Burrying the dead@: ' + i);
+            flyingObjects.splice(i,1);
+        } 
     }
 }
 
 function render(){
     //console.log('Sending flying Objects: ' + flyingObjects.length);
-    io.emit('render', flyingObjects);
+    io.emit('render', Array.from(flyingObjects));
 }
 
+function dropRocks(){
+    console.log('Dropping Rocks');
+    function TheAllOverer(max) {
+        var randomized = Math.random() * max;
+        if(Math.floor(Math.random() * 10)%2 == 0){
+            randomized *= -1;
+        }
+        return randomized;
+    };
+    var newRock = new FlyingObject(
+            500,                                //X
+            400,                                //Y
+            11,                                 //Radius
+            TheAllOverer(361),                  //Direction
+            TheAllOverer(1),                   //VelocityX
+            TheAllOverer(1),                    //VelocityY
+            .02,                                //Rotation
+            2                                   //Type
+            );
+    //console.log('Created new Rock');
+    
+    //how many sides will the asteroid have?
+    newRock.sides = Math.floor(Math.random() * 10 + 5);
+    //console.log('Gave that rock ' + newRock.sides + ' sides');
+    
+    //give the asteroid a ridged apperance
+    newRock.ridges = [];
+    newRock.setRidges = function(){
+            for(var i = 0; i < this.sides; i++){
+                newRock.ridges.push(Math.random() * newRock.radius);
+                //console.log('added asteroid ridge with value of: ' + newRock.ridges[i]);
+            }
+        };
+    newRock.setRidges();
+    //console.log('Gave that rock ridges');
+    
+    //point value of the rock
+    newRock.pointValue = 1;
+    //override kill method
+    newRock.kill = function () {
+      this.isAlive = false;
+      return this.pointValue;
+    };
+    newRock.TheAllOverer = TheAllOverer;
+    
+    flyingObjects.push(newRock);
+}
+
+function collision(fObj1, fObj2){
+    var dx = fObj1.x - fObj2.x;
+    var dy = fObj1.y - fObj2.y;
+    var distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < fObj1.radius + fObj2.radius) {
+        //collision detected!
+        return true;
+    }else{
+        //no collision
+        return false;
+    }
+}
+
+function updateScores(){
+    var html = app.render('partials/score_table', { users: users }, 
+    function(err, html){
+        console.log(html);
+        io.emit('scores', html);
+    });
+}
