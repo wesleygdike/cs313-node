@@ -1,5 +1,6 @@
 var socket;
 var flyingObjects = [];
+var scores;
 var el;
 var input = {
   boosting  :   false,
@@ -14,25 +15,35 @@ function setup() {
     canvas.parent('canvas-holder');
     el = document.getElementById('servertime');
     drawingEl = document.getElementById('drawingnotes');
+    scores = document.getElementById('scoreTable');
     //create a socket
     socket = io();
+    //TEST FUNCTION, Basic Sockets
+    socket.on('time', function(timeString) {
+        el.innerHTML = 'Server time: ' + timeString;
+    });
     //Updates the Client flying object data
     socket.on('render', function(data) {
         //el.innerHTML = 'Flying Object: X:' + data[0].x + ", Y:" + data[0].y ;
         flyingObjects = data;
     });
+    //Udates the scores
+    socket.on('scores', function(data) {
+        //loads a table
+        scores.innerHTML = data;
+    });
 }
 // Using the P5 Javascript library
 function draw() {
-    background(0); 
+    background(0);
+    //Flying Objects
     for (var i = 0; i < flyingObjects.length; i++) {
         render(flyingObjects[i]);
     }
 }
-//DYNAMIC DISPLAY FUNCTION
+//DYNAMIC DISPLAY FUNCTIONS
 function render(toRender){
-//drawingEl.innerHTML = "Debug msg here";
-
+//drawingEl.innerHTML = "Trying To Render type: " + toRender.type;
     switch(toRender.type){
         //SHIP
         case 0:     push();
@@ -50,7 +61,24 @@ function render(toRender){
                     fill(0);
                     stroke(255);
                     line(0,0,0,-toRender.radius);
-                    //drawingEl.innerHTML = "Debug msg here";
+                    //drawingEl.innerHTML = "rendered LASER";
+                    pop();break;
+        //ASTEROID
+        case 2:     push();
+                    translate(toRender.x, toRender.y);
+                    rotate(toRender.direction + PI / 2);
+                    fill(0);
+                    stroke(255);
+                    beginShape(); //TESTING SQUARE 1ST
+                    for (var i = 0; i < toRender.sides; i++) {
+                      var angle = map(i, 0, toRender.sides, 0, TWO_PI);
+                      var r = toRender.radius + toRender.ridges[i];
+                      var x = r * cos(angle);
+                      var y = r * sin(angle);
+                      vertex(x, y);
+                    }
+                    endShape(CLOSE);
+                    //drawingEl.innerHTML = "rendered Asteroid";
                     pop();break;
     }
 }
