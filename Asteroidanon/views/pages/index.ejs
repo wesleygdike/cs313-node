@@ -3,19 +3,22 @@
 <head>
   <% include ../partials/header.ejs %>
   <% include ../partials/p5.ejs %>
-
+  <% include ../partials/socket.ejs %>
 </head>
 
 <body>
   <% include ../partials/nav.ejs %>
 
 <div class="container-fluid bg-3 text-center">
-    <% include ../partials/socket.ejs %>
     <h1 id="servertime">Asteroidanon</h1>
 </div>
 <div class="container-fluid bg-4 text-center" id="canvas-holder">
     <h1 id="drawingnotes"></h1>
 </div>
-    
+<div class="container-fluid bg-3 text-center">
+    <h1>Leader Board</h1>
+    <table id="scoreTable"></table>
+</div>
+  
 </body>
 </html>
