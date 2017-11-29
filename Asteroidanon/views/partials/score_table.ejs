@@ -1,0 +1,20 @@
+<!-- Score Table -->
+<table>
+  <tr>
+    <th>Place</th>
+    <th>User ID</th>
+    <th>Score</th> 
+  </tr>
+<% for (var i = 0; i< users.length; i++) { 
+    if( users[i].ship.isAlive) {%>  
+
+  <tr>
+    <!-- Place -->
+    <td><%= i+1 %></td>
+    <!-- User ID -->
+    <td><%= users[i].id %></td> 
+    <!-- Score -->
+    <td><%= users[i].score %></td>
+  </tr>
+<% }} %>
+</table>
