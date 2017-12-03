@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <% include ../partials/header.ejs %>
+  <% include ../partials/login_scripts.ejs %>
+</head>
+
+<body>
+  <% include ../partials/nav.ejs %>
+
+<div class="container-fluid bg-3 text-center">
+    <h1 id="AppHeader">Asteroidanon</h1>
+</div>
+<div class="container-fluid bg-4 text-center" id="main-holder">
+    <div class="row" id="login-row">
+        <div class="col-sm-4" id="overview">
+            <!-- overview section-->
+            <h1>Overview</h1>
+            <% include ../partials/over_view.ejs %>
+        </div>
+        <div class="col-sm-4">
+            <!-- Login section-->
+            <div class="container-fluid bg-4 text-center" id="loginform-holder">
+                <form action="/login" method="post">
+                <h1 id="status">Enter user name to enter game</h1>
+                <input type="text" name="username" id="username" value="Username" class="form">
+                <input type="submit" id="enterbtn" class="form">Enter</button>
+                </form>
+            </div>
+        </div>
+        <div class="col-sm-4" id="leaderboard">
+            <!-- leaderboard section-->
+            <h1>Leader Board</h1>
+            
+        </div>
+    </div>
+</div>
+<div class="container-fluid bg-3 text-center">
+
+</div>
+  
+</body>
+</html>
