@@ -2,13 +2,22 @@
 const ejs = require('ejs');
 const express = require('express');
 const http = require('http');
+const bodyParser = require('body-parser');
+const expressValidator = require('express-validator');
+var expressSession = require('express-session')({secret: 'asteroidanon', saveUninitialized: true, resave: true});
+var sharedsession = require("express-socket.io-session");
 const app = express();
+//const { Client } = require('pg');
 
 
 // Activate the server to listen
 app.set('port', (process.env.PORT || 5000));
 // Set static directory to public
 app.use(express.static(__dirname + '/public'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: false}));
+app.use(expressValidator());
+app.use(expressSession);
 const server = app.listen(app.get('port'), function() {
   console.log('AsteroidanonTestEnv app is running on port', app.get('port'));
 });
@@ -19,11 +28,25 @@ app.set('view engine', 'ejs');
 // Landing Page
 app.get('/', function(request, response) {
     console.log("Received Request");
-  response.render('pages/index');
+  //response.render('pages/index'); TESTING LOGIN PAGE
+    response.render('pages/login'); 
+});
+
+// Landing Page
+app.post('/login', function(request, response) {
+    console.log("Received login Request: " + request.body.username);
+    request.session.user = {
+        id : count++,
+        name: request.body.username
+    };
+
+  //response.render('pages/index'); TESTING LOGIN PAGE
+    response.render('pages/asteroidanon');
 });
 
 // WEB SOCKETS
 const io = require('socket.io').listen(server);
+io.use(sharedsession(expressSession, {autosave: true}));
 // Register a callback function run when a new connection connects
 var FlyingObject = require('./flyingObject');
 //TESTING COUNT
@@ -37,16 +60,16 @@ var users = [];
 io.on('connection', (socket) =>{
     console.log('a user connected');
     //create a user object for each connection
-    var user = {
-        score : 0,
-        ship : new FlyingObject(500, 750, 10, 161.79, 0 ,0 , 0, 0),
-        input : {
+    var user = socket.handshake.session.user;
+    user.score = 0;
+    user.ship = new FlyingObject(500, 750, 10, 161.79, 0 ,0 , 0, 0);
+    user.input = {
             boosting    :   false,
             turn        :   0,
             fire        :   false
-        }, 
-        reloaded : false,
-        fire : function(){
+        };
+    user.reloaded = false,
+    user.fire = function(){
             var laser = new FlyingObject(
                         //place the laser at the tip of the ship
                         user.ship.x + (Math.cos(this.ship.direction) * this.ship.radius),   //x
@@ -74,36 +97,34 @@ io.on('connection', (socket) =>{
                 this.user.score += points;
             };
             return laser;
-        },
-        id : name + count++
-    };
+        };
     //add the users ship to the data and get the index/id
-    //console.log('Assigning Ship: ' + user.id);
+    console.log('Assigning Ship: ' + JSON.stringify(user.ship));
     flyingObjects.push(user.ship);
     //add user to array for later use
-    console.log('Assigning User: ' + user.id);
+    console.log('Assigning User: ' + user.name + user.id);
     users.push(user);
     //initiate scare tables
     updateScores();
     //When user disconnects
     socket.on('disconnect', function(){
-      console.log('user: ' + user.id + ' disconnected');
-      //remove that user and ship from the game
-      var tempShipID = flyingObjects.splice(flyingObjects.indexOf(user.ship), 1);
-      console.log('ship: ' + tempShipID[0].id + ' removed');
-      var tempUserID = users.splice(users.indexOf(user), 1);
-      console.log('user: ' + tempUserID[0].id + ' removed');
-      //update Scores
-      updateScores();
+            console.log('user: ' + user.name + user.id + ' disconnected');
+            //remove that user and ship from the game
+            var tempShipID = flyingObjects.splice(flyingObjects.indexOf(user.ship), 1);
+            console.log('ship: ' + tempShipID[0].id + ' removed');
+            var tempUserID = users.splice(users.indexOf(user), 1);
+            console.log('user: ' + tempUserID[0].id + ' removed');
+            //update Scores
+            updateScores();
     });
     //When user changes their input values
     socket.on('inputchange', function(data){
-        //console.log('User: ' + user.id + 'changed their input');
-        //update user input values
-        user.input.boosting = data.boosting;
-        user.input.clock = data.clock;
-        user.input.counter = data.counter;
-        user.input.fire = data.fire;
+            //console.log('User: ' + user.id + 'changed their input');
+            //update user input values
+            user.input.boosting = data.boosting;
+            user.input.clock = data.clock;
+            user.input.counter = data.counter;
+            user.input.fire = data.fire;
     });
 });
 
@@ -290,9 +311,57 @@ function collision(fObj1, fObj2){
 }
 
 function updateScores(){
-    var html = app.render('partials/score_table', { users: users }, 
+    app.render('partials/score_table', { users: users }, 
     function(err, html){
         console.log(html);
         io.emit('scores', html);
     });
 }
+
+/*
+ * DATA STORE
+ */
+/*const dataStore = () => {
+  client = new Client({
+        connectionString: process.env.DATABASE_URL,
+        ssl: true
+    }),
+//returns users
+  getUsers = function() {
+      var users = {};
+      this.client.connect();
+        client.query('SELECT * FROM astro_users;', (err, res) => {
+          if (err) throw err;
+          for(let row of res.rows){
+              console.log(JSON.stringify(row));
+          }
+          client.end();
+        });
+        return users;
+    };
+ //insert new user
+  addUser = function() {
+      var users = {};
+      this.client.connect();
+        client.query('SELECT * FROM astro_users;', (err, res) => {
+          if (err) throw err;
+          users = res.rows;
+          client.end();
+        });
+        return users;
+    };
+ //reuturns high scores
+  getScores = function() {
+      var scores = {};
+      this.client.connect();
+        client.query('SELECT * FROM high_scores;', (err, res) => {
+          if (err) throw err;
+          for(let row of res.rows) {
+             //foreach logic
+          }
+          client.end();
+        });
+        return scores;
+    };
+};
+*/
