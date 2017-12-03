@@ -1,4 +1,5 @@
 var socket;
+var canvas;
 var flyingObjects = [];
 var scores;
 var el;
@@ -11,7 +12,7 @@ var input = {
 // Using the P5 Javascript library
 function setup() {
     //Set up the Canvas
-    var canvas = createCanvas(1000,800);
+    canvas = createCanvas(1000,800);
     canvas.parent('canvas-holder');
     el = document.getElementById('servertime');
     drawingEl = document.getElementById('drawingnotes');
